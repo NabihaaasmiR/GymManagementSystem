@@ -7,14 +7,17 @@ namespace GymManagementSystem.Services
     public class MemberService
     {
         private List<Member> members;
+
         public MemberService(List<Member> memberList)
         {
             members = memberList;
         }
+
         public List<Member> GetAllMembers()
         {
             return members;
         }
+
         public Member GetMemberById(string id)
         {
             foreach (var m in members)
@@ -38,6 +41,7 @@ namespace GymManagementSystem.Services
 
             members.Add(member);
         }
+
         public List<Member> SearchMembers(string keyword)
         {
             List<Member> result = new List<Member>();
@@ -60,6 +64,7 @@ namespace GymManagementSystem.Services
 
             m.PhoneNumber = phone;
         }
+
         public void DeleteMember(string id)
         {
             var m = GetMemberById(id);
