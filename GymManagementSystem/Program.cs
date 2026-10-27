@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using GymManagementSystem.Models;
 using GymManagementSystem.Services;
 
@@ -7,292 +6,261 @@ namespace GymManagementSystem
 {
     class Program
     {
+        private static readonly MemberService _memberService = new MemberService();
+        private static readonly PlanService _planService = new PlanService();
+        private static readonly MembershipService _membershipService = new MembershipService();
+
         static void Main(string[] args)
         {
-            StorageService storageService = new StorageService();
+            bool exit = false;
 
-            List<Member> memberList = storageService.LoadMembers();
-            MemberService memberService = new MemberService(memberList);
-
-            List<MembershipPlan> planList = storageService.LoadPlans();
-            PlanService planService = new PlanService(planList);
-
-            List<Membership> membershipList = storageService.LoadMemberships();
-            MembershipService membershipService = new MembershipService(membershipList);
-
-            bool running = true;
-            while (running)
+            while (!exit)
             {
                 Console.Clear();
-                Console.WriteLine("======================================");
-                Console.WriteLine("    GYM MANAGEMENT SYSTEM (JSON)     ");
-                Console.WriteLine("======================================");
-                Console.WriteLine("--- Member Operations ---");
-                Console.WriteLine("1.  Register Member");
-                Console.WriteLine("2.  View All Members");
-                Console.WriteLine("3.  Search Members");
-                Console.WriteLine("4.  Update Member Contact");
-                Console.WriteLine("5.  Delete Member");
-                Console.WriteLine("--- Plan Operations ---");
-                Console.WriteLine("6.  Add Membership Plan");
-                Console.WriteLine("7.  View All Plans");
-                Console.WriteLine("8.  Search Plans");
-                Console.WriteLine("9.  Update Plan");
-                Console.WriteLine("10. Delete Plan");
-                Console.WriteLine("--- Subscription Operations ---");
-                Console.WriteLine("11. Assign Membership");
-                Console.WriteLine("12. View All Memberships");
-                Console.WriteLine("13. Cancel Membership");
-                Console.WriteLine("--------------------------------------");
-                Console.WriteLine("14. Exit");
+                Console.WriteLine("========================================");
+                Console.WriteLine("       GYM MANAGEMENT SYSTEM (SQL)      ");
+                Console.WriteLine("========================================");
+                Console.WriteLine("1. Manage Members");
+                Console.WriteLine("2. Manage Membership Plans");
+                Console.WriteLine("3. Manage Memberships");
+                Console.WriteLine("4. Exit");
+                Console.Write("Select an option (1-4): ");
+
+                string? choice = Console.ReadLine();
+
+                switch (choice)
+                {
+                    case "1":
+                        ManageMembersMenu();
+                        break;
+                    case "2":
+                        ManagePlansMenu();
+                        break;
+                    case "3":
+                        ManageMembershipsMenu();
+                        break;
+                    case "4":
+                        exit = true;
+                        Console.WriteLine("\nThank you for using Gym Management System. Goodbye!");
+                        break;
+                    default:
+                        Console.WriteLine("\nInvalid option. Press any key to try again.");
+                        Console.ReadKey();
+                        break;
+                }
+            }
+        }
+
+        private static void ManageMembersMenu()
+        {
+            bool back = false;
+            while (!back)
+            {
+                Console.Clear();
+                Console.WriteLine("--- MANAGE MEMBERS ---");
+                Console.WriteLine("1. View All Members");
+                Console.WriteLine("2. Add New Member");
+                Console.WriteLine("3. Back to Main Menu");
                 Console.Write("Select an option: ");
 
-                string choice = Console.ReadLine();
+                string? choice = Console.ReadLine();
 
                 if (choice == "1")
                 {
-                    try
+                    Console.Clear();
+                    Console.WriteLine("--- MEMBER LIST ---");
+                    var members = _memberService.GetAllMembers();
+                    if (members.Count == 0)
                     {
-                        Member m = new Member();
-
-                        Console.Write("Enter Member ID: ");
-                        m.MemberId = Console.ReadLine() ?? string.Empty;
-
-                        Console.Write("Enter Full Name: ");
-                        m.FullName = Console.ReadLine() ?? string.Empty;
-
-                        Console.Write("Enter Age (16-100): ");
-                        if (int.TryParse(Console.ReadLine(), out int age))
+                        Console.WriteLine("No members found in database.");
+                    }
+                    else
+                    {
+                        foreach (var m in members)
                         {
-                            m.Age = age;
+                            Console.WriteLine($"ID: {m.MemberId} | Name: {m.FullName} | Age: {m.Age} | Phone: {m.PhoneNumber} | Joined: {m.JoinDate.ToShortDateString()}");
                         }
-
-                        Console.Write("Enter Phone Number: ");
-                        m.PhoneNumber = Console.ReadLine() ?? string.Empty;
-                        m.JoinDate = DateTime.Today;
-
-                        memberService.RegisterMember(m);
-                        storageService.SaveMembers(memberList);
-                        Console.WriteLine("Member registered and saved successfully!");
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
+                    Console.WriteLine("\nPress any key to continue...");
+                    Console.ReadKey();
                 }
                 else if (choice == "2")
                 {
                     Console.Clear();
-                    Console.WriteLine("--- All Members ---");
-                    foreach (var m in memberService.GetAllMembers())
+                    Console.WriteLine("--- ADD NEW MEMBER ---");
+
+                    Console.Write("Enter Member ID: ");
+                    string id = Console.ReadLine() ?? string.Empty;
+
+                    Console.Write("Enter Full Name: ");
+                    string name = Console.ReadLine() ?? string.Empty;
+
+                    Console.Write("Enter Age: ");
+                    int age = Convert.ToInt32(Console.ReadLine());
+
+                    Console.Write("Enter Phone Number: ");
+                    string phone = Console.ReadLine() ?? string.Empty;
+
+                    Member newMember = new Member
                     {
-                        Console.WriteLine($"ID: {m.MemberId} | Name: {m.FullName} | Age: {m.Age} | Phone: {m.PhoneNumber} | Joined: {m.JoinDate.ToShortDateString()}");
-                    }
+                        MemberId = id,
+                        FullName = name,
+                        Age = age,
+                        PhoneNumber = phone,
+                        JoinDate = DateTime.Now
+                    };
+
+                    _memberService.AddMember(newMember);
+                    Console.WriteLine("\nMember successfully added and saved to SQL Server!");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
                 }
                 else if (choice == "3")
                 {
-                    Console.Write("Enter search keyword (Name or Phone): ");
-                    string keyword = Console.ReadLine() ?? string.Empty;
-                    Console.WriteLine("--- Search Results ---");
-                    foreach (var m in memberService.SearchMembers(keyword))
-                    {
-                        Console.WriteLine($"ID: {m.MemberId} | Name: {m.FullName} | Phone: {m.PhoneNumber}");
-                    }
+                    back = true;
                 }
-                else if (choice == "4")
-                {
-                    try
-                    {
-                        Console.Write("Enter Member ID to update: ");
-                        string id = Console.ReadLine() ?? string.Empty;
-                        Console.Write("Enter new Phone Number: ");
-                        string phone = Console.ReadLine() ?? string.Empty;
+            }
+        }
 
-                        memberService.UpdateMemberContact(id, phone);
-                        storageService.SaveMembers(memberList);
-                        Console.WriteLine("Member contact updated and saved successfully!");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
-                }
-                else if (choice == "5")
-                {
-                    try
-                    {
-                        Console.Write("Enter Member ID to delete: ");
-                        string id = Console.ReadLine() ?? string.Empty;
+        private static void ManagePlansMenu()
+        {
+            bool back = false;
+            while (!back)
+            {
+                Console.Clear();
+                Console.WriteLine("--- MANAGE MEMBERSHIP PLANS ---");
+                Console.WriteLine("1. View All Plans");
+                Console.WriteLine("2. Add New Plan");
+                Console.WriteLine("3. Back to Main Menu");
+                Console.Write("Select an option: ");
 
-                        memberService.DeleteMember(id);
-                        storageService.SaveMembers(memberList);
-                        Console.WriteLine("Member deleted and saved successfully!");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
-                }
-                else if (choice == "6")
-                {
-                    try
-                    {
-                        MembershipPlan p = new MembershipPlan();
+                string? choice = Console.ReadLine();
 
-                        Console.Write("Enter Plan ID: ");
-                        p.PlanId = Console.ReadLine() ?? string.Empty;
-
-                        Console.Write("Enter Plan Name: ");
-                        p.PlanName = Console.ReadLine() ?? string.Empty;
-
-                        Console.Write("Enter Duration in Days: ");
-                        if (int.TryParse(Console.ReadLine(), out int duration))
-                        {
-                            p.DurationInDays = duration;
-                        }
-
-                        Console.Write("Enter Fee: ");
-                        if (decimal.TryParse(Console.ReadLine(), out decimal fee))
-                        {
-                            p.Fee = fee;
-                        }
-
-                        planService.AddPlan(p);
-                        storageService.SavePlans(planList);
-                        Console.WriteLine("Membership plan added and saved successfully!");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
-                }
-                else if (choice == "7")
+                if (choice == "1")
                 {
                     Console.Clear();
-                    Console.WriteLine("--- All Membership Plans ---");
-                    foreach (var p in planService.GetAllPlans())
+                    Console.WriteLine("--- PLANS LIST ---");
+                    var plans = _planService.GetAllPlans();
+                    if (plans.Count == 0)
                     {
-                        Console.WriteLine($"ID: {p.PlanId} | Name: {p.PlanName} | Duration: {p.DurationInDays} days | Fee: {p.Fee:C}");
+                        Console.WriteLine("No plans found in database.");
                     }
+                    else
+                    {
+                        foreach (var p in plans)
+                        {
+                            Console.WriteLine($"ID: {p.PlanId} | Name: {p.PlanName} | Duration: {p.DurationInDays} days | Fee: ${p.Fee}");
+                        }
+                    }
+                    Console.WriteLine("\nPress any key to continue...");
+                    Console.ReadKey();
                 }
-                else if (choice == "8")
-                {
-                    Console.Write("Enter search keyword (Plan ID or Name): ");
-                    string keyword = Console.ReadLine() ?? string.Empty;
-                    Console.WriteLine("--- Plan Search Results ---");
-                    foreach (var p in planService.SearchPlans(keyword))
-                    {
-                        Console.WriteLine($"ID: {p.PlanId} | Name: {p.PlanName} | Duration: {p.DurationInDays} days | Fee: {p.Fee:C}");
-                    }
-                }
-                else if (choice == "9")
-                {
-                    try
-                    {
-                        Console.Write("Enter Plan ID to update: ");
-                        string id = Console.ReadLine() ?? string.Empty;
-
-                        Console.Write("Enter New Plan Name: ");
-                        string name = Console.ReadLine() ?? string.Empty;
-
-                        Console.Write("Enter New Duration in Days: ");
-                        int.TryParse(Console.ReadLine(), out int duration);
-
-                        Console.Write("Enter New Fee: ");
-                        decimal.TryParse(Console.ReadLine(), out decimal fee);
-
-                        planService.UpdatePlan(id, name, duration, fee);
-                        storageService.SavePlans(planList);
-                        Console.WriteLine("Plan updated and saved successfully!");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
-                }
-                else if (choice == "10")
-                {
-                    try
-                    {
-                        Console.Write("Enter Plan ID to delete: ");
-                        string id = Console.ReadLine() ?? string.Empty;
-
-                        planService.DeletePlan(id);
-                        storageService.SavePlans(planList);
-                        Console.WriteLine("Plan deleted and saved successfully!");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
-                }
-                else if (choice == "11")
-                {
-                    try
-                    {
-                        Membership ms = new Membership();
-
-                        Console.Write("Enter Membership ID: ");
-                        ms.MembershipId = Console.ReadLine() ?? string.Empty;
-
-                        Console.Write("Enter Member ID: ");
-                        string memberId = Console.ReadLine() ?? string.Empty;
-                        Member member = memberService.GetMemberById(memberId);
-
-                        Console.Write("Enter Plan ID: ");
-                        string planId = Console.ReadLine() ?? string.Empty;
-                        MembershipPlan plan = planService.GetPlanById(planId);
-
-                        membershipService.AssignMembership(ms, member, plan);
-                        ms.MemberId = memberId;
-                        ms.PlanId = planId;
-
-                        storageService.SaveMemberships(membershipList);
-                        Console.WriteLine("Membership assigned and saved successfully!");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
-                }
-                else if (choice == "12")
+                else if (choice == "2")
                 {
                     Console.Clear();
-                    Console.WriteLine("--- All Active & Cancelled Memberships ---");
-                    foreach (var ms in membershipService.GetAllMemberships())
-                    {
-                        Console.WriteLine($"ID: {ms.MembershipId} | Member: {ms.MemberId} | Plan: {ms.PlanId} | Start: {ms.StartDate.ToShortDateString()} | End: {ms.EndDate.ToShortDateString()} | Status: {ms.Status} | Fee: {ms.AmountPaid:C}");
-                    }
-                }
-                else if (choice == "13")
-                {
-                    try
-                    {
-                        Console.Write("Enter Membership ID to cancel: ");
-                        string id = Console.ReadLine() ?? string.Empty;
+                    Console.WriteLine("--- ADD NEW PLAN ---");
 
-                        membershipService.CancelMembership(id);
-                        storageService.SaveMemberships(membershipList);
-                        Console.WriteLine("Membership cancelled and saved successfully!");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
-                }
-                else if (choice == "14")
-                {
-                    running = false;
-                }
-                else
-                {
-                    Console.WriteLine("Invalid option. Please try again.");
-                }
+                    Console.Write("Enter Plan ID: ");
+                    string id = Console.ReadLine() ?? string.Empty;
 
-                if (running)
+                    Console.Write("Enter Plan Name: ");
+                    string name = Console.ReadLine() ?? string.Empty;
+
+                    Console.Write("Enter Duration in Days: ");
+                    int duration = Convert.ToInt32(Console.ReadLine());
+
+                    Console.Write("Enter Fee Amount: ");
+                    decimal fee = Convert.ToDecimal(Console.ReadLine());
+
+                    MembershipPlan newPlan = new MembershipPlan
+                    {
+                        PlanId = id,
+                        PlanName = name,
+                        DurationInDays = duration,
+                        Fee = fee
+                    };
+
+                    _planService.AddPlan(newPlan);
+                    Console.WriteLine("\nPlan successfully added and saved to SQL Server!");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                }
+                else if (choice == "3")
                 {
-                    Console.WriteLine("\nPress Enter to continue...");
-                    Console.ReadLine();
+                    back = true;
+                }
+            }
+        }
+
+        private static void ManageMembershipsMenu()
+        {
+            bool back = false;
+            while (!back)
+            {
+                Console.Clear();
+                Console.WriteLine("--- MANAGE MEMBERSHIPS ---");
+                Console.WriteLine("1. View All Memberships");
+                Console.WriteLine("2. Assign Membership to Member");
+                Console.WriteLine("3. Back to Main Menu");
+                Console.Write("Select an option: ");
+
+                string? choice = Console.ReadLine();
+
+                if (choice == "1")
+                {
+                    Console.Clear();
+                    Console.WriteLine("-- MEMBERSHIPS LIST ---");
+                    var memberships = _membershipService.GetAllMemberships();
+                    if (memberships.Count == 0)
+                    {
+                        Console.WriteLine("No memberships found in database.");
+                    }
+                    else
+                    {
+                        foreach (var ms in memberships)
+                        {
+                            Console.WriteLine($"ID: {ms.MembershipId} | Member ID: {ms.MemberId} | Plan ID: {ms.PlanId} | Status: {ms.Status} | Paid: ${ms.AmountPaid}");
+                        }
+                    }
+                    Console.WriteLine("\nPress any key to continue...");
+                    Console.ReadKey();
+                }
+                else if (choice == "2")
+                {
+                    Console.Clear();
+                    Console.WriteLine("--- ASSIGN MEMBERSHIP ---");
+
+                    Console.Write("Enter Membership ID: ");
+                    string msId = Console.ReadLine() ?? string.Empty;
+
+                    Console.Write("Enter Member ID: ");
+                    string mId = Console.ReadLine() ?? string.Empty;
+
+                    Console.Write("Enter Plan ID: ");
+                    string pId = Console.ReadLine() ?? string.Empty;
+
+                    Console.Write("Enter Amount Paid: ");
+                    decimal amount = Convert.ToDecimal(Console.ReadLine());
+
+                    Membership newMs = new Membership
+                    {
+                        MembershipId = msId,
+                        MemberId = mId,
+                        PlanId = pId,
+                        StartDate = DateTime.Now,
+                        EndDate = DateTime.Now.AddDays(30), // Defaulting to 30 days or based on plan
+                        Status = "Active",
+                        AmountPaid = amount
+                    };
+
+                    _membershipService.AddMembership(newMs);
+                    Console.WriteLine("\nMembership successfully assigned and saved to SQL Server!");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                }
+                else if (choice == "3")
+                {
+                    back = true;
                 }
             }
         }

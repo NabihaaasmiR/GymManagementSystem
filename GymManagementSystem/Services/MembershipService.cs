@@ -1,62 +1,33 @@
 ﻿using System;
 using System.Collections.Generic;
 using GymManagementSystem.Models;
+using GymManagementSystem.Repositories;
 
 namespace GymManagementSystem.Services
 {
     public class MembershipService
     {
-        private List<Membership> memberships;
+        private readonly MembershipRepository _membershipRepository;
 
-        public MembershipService(List<Membership> membershipList)
+        public MembershipService()
         {
-            memberships = membershipList;
+            _membershipRepository = new MembershipRepository();
         }
 
         public List<Membership> GetAllMemberships()
         {
-            return memberships;
+            return _membershipRepository.GetAllMemberships();
         }
 
-        public Membership GetMembershipById(string id)
+        public void AddMembership(Membership membership)
         {
-            foreach (var ms in memberships)
-            {
-                if (ms.MembershipId.Equals(id, StringComparison.OrdinalIgnoreCase))
-                    return ms;
-            }
-            return null;
+            _membershipRepository.SaveMembership(membership);
         }
 
-        public void AssignMembership(Membership membership, Member member, MembershipPlan plan)
+        public Membership? GetMembershipById(string membershipId)
         {
-            if (member == null)
-                throw new Exception("Member does not exist.");
-
-            if (plan == null)
-                throw new Exception("Membership plan does not exist.");
-
-            foreach (var ms in memberships)
-            {
-                if (ms.MembershipId.Equals(membership.MembershipId, StringComparison.OrdinalIgnoreCase))
-                    throw new Exception("Membership ID must be unique.");
-            }
-
-            membership.StartDate = DateTime.Today;
-            membership.EndDate = membership.StartDate.AddDays(plan.DurationInDays);
-            membership.AmountPaid = plan.Fee;
-            membership.Status = "Active";
-
-            memberships.Add(membership);
-        }
-
-        public void CancelMembership(string id)
-        {
-            var ms = GetMembershipById(id);
-            if (ms == null)
-                throw new Exception("Membership not found.");
-
-            ms.Status = "Cancelled";
+            var memberships = _membershipRepository.GetAllMemberships();
+            return memberships.Find(ms => ms.MembershipId.Equals(membershipId, StringComparison.OrdinalIgnoreCase));
         }
     }
 }
