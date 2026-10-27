@@ -10,7 +10,7 @@ namespace GymManagementSystem.Repositories
     {
         private const string connectionString = "Server=.\\SQLEXPRESS;Database=GymManagementDb;Integrated Security=true;TrustServerCertificate=true;";
 
-        // Asynchronous method to get all members
+        // --- ASYNCHRONOUS METHODS ---
         public async Task<List<Member>> GetAllMembersAsync()
         {
             List<Member> members = new List<Member>();
@@ -22,7 +22,6 @@ namespace GymManagementSystem.Repositories
 
                 await using (SqlCommand command = new SqlCommand(query, connection))
                 {
-                    // Use ExecuteReaderAsync for non-blocking reads
                     await using (SqlDataReader reader = await command.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
@@ -44,7 +43,6 @@ namespace GymManagementSystem.Repositories
             return members;
         }
 
-        // Asynchronous method to save (insert or update) a member
         public async Task SaveMemberAsync(Member m)
         {
             await using (SqlConnection connection = new SqlConnection(connectionString))
@@ -75,7 +73,29 @@ namespace GymManagementSystem.Repositories
 
                     await command.ExecuteNonQueryAsync();
                 }
+
+                // Automatically record an entry in AuditLogs for tracking
+                string auditQuery = "INSERT INTO AuditLogs (EntityName, EntityId, Action, Details) VALUES (@EntityName, @EntityId, @Action, @Details)";
+                await using (SqlCommand auditCommand = new SqlCommand(auditQuery, connection))
+                {
+                    auditCommand.Parameters.AddWithValue("@EntityName", "Member");
+                    auditCommand.Parameters.AddWithValue("@EntityId", m.MemberId);
+                    auditCommand.Parameters.AddWithValue("@Action", exists ? "UPDATE" : "INSERT");
+                    auditCommand.Parameters.AddWithValue("@Details", $"Member {m.FullName} ({m.MemberId}) was {(exists ? "updated" : "registered")}.");
+                    await auditCommand.ExecuteNonQueryAsync();
+                }
             }
+        }
+
+        // --- SYNCHRONOUS WRAPPER/FALLBACK METHODS (Prevents missing method errors) ---
+        public List<Member> GetAllMembers()
+        {
+            return GetAllMembersAsync().GetAwaiter().GetResult();
+        }
+
+        public void SaveMember(Member m)
+        {
+            SaveMemberAsync(m).GetAwaiter().GetResult();
         }
     }
 }
