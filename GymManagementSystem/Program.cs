@@ -1,76 +1,139 @@
 ﻿using System;
-using Microsoft.Data.SqlClient;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using GymManagementSystem.Models;
-using System.Data;
+using GymManagementSystem.Repositories;
 
-namespace GymManagementSystem.Repositories
+namespace GymManagementSystem
 {
-    public partial class MembershipRepository
+    class Program
     {
-        // Transactional method: Creates a membership and records an audit log atomically
-        public void SaveMembershipWithTransaction(Membership ms, string adminUser)
+        static async Task Main(string[] args)
         {
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            MemberRepository memberRepo = new MemberRepository();
+            bool exit = false;
+
+            while (!exit)
             {
-                connection.Open();
+                Console.Clear();
+                Console.WriteLine("========================================");
+                Console.WriteLine("       GYM MANAGEMENT SYSTEM            ");
+                Console.WriteLine("========================================");
+                Console.WriteLine("1. View All Members");
+                Console.WriteLine("2. Add or Update Member");
+                Console.WriteLine("3. Exit");
+                Console.WriteLine("========================================");
+                Console.Write("Enter your choice: ");
 
-                // 1. Begin the transaction
-                using (SqlTransaction transaction = connection.BeginTransaction())
+                string? choice = Console.ReadLine();
+
+                switch (choice)
                 {
-                    try
+                    case "1":
+                        await DisplayAllMembersAsync(memberRepo);
+                        break;
+
+                    case "2":
+                        await AddOrUpdateMemberAsync(memberRepo);
+                        break;
+
+                    case "3":
+                        exit = true;
+                        Console.WriteLine("\nExiting application. Goodbye!");
+                        break;
+
+                    default:
+                        Console.WriteLine("\nInvalid choice. Press any key to try again.");
+                        Console.ReadKey();
+                        break;
+                }
+            }
+        }
+
+        private static async Task DisplayAllMembersAsync(MemberRepository repo)
+        {
+            Console.Clear();
+            Console.WriteLine("--- Registered Members ---");
+            try
+            {
+                // Calling the asynchronous repository method
+                List<Member> members = await repo.GetAllMembersAsync();
+
+                if (members.Count == 0)
+                {
+                    Console.WriteLine("No members found in the database.");
+                }
+                else
+                {
+                    Console.WriteLine($"{"ID",-10} {"Full Name",-20} {"Age",-5} {"Phone Number",-15} {"Join Date",-12}");
+                    Console.WriteLine(new string('-', 65));
+
+                    foreach (var m in members)
                     {
-                        // Check if membership already exists (for update vs insert)
-                        string checkQuery = "SELECT COUNT(1) FROM Memberships WHERE MembershipId = @MembershipId";
-                        bool exists = false;
-
-                        using (SqlCommand checkCommand = new SqlCommand(checkQuery, connection, transaction))
-                        {
-                            checkCommand.Parameters.AddWithValue("@MembershipId", ms.MembershipId);
-                            int count = Convert.ToInt32(checkCommand.ExecuteScalar());
-                            if (count > 0) exists = true;
-                        }
-
-                        // 2. Perform the Insert or Update
-                        string query = exists
-                            ? "UPDATE Memberships SET MemberId = @MemberId, PlanId = @PlanId, StartDate = @StartDate, EndDate = @EndDate, Status = @Status, AmountPaid = @AmountPaid WHERE MembershipId = @MembershipId"
-                            : "INSERT INTO Memberships (MembershipId, MemberId, PlanId, StartDate, EndDate, Status, AmountPaid) VALUES (@MembershipId, @MemberId, @PlanId, @StartDate, @EndDate, @Status, @AmountPaid)";
-
-                        using (SqlCommand command = new SqlCommand(query, connection, transaction))
-                        {
-                            command.Parameters.AddWithValue("@MembershipId", ms.MembershipId);
-                            command.Parameters.AddWithValue("@MemberId", ms.MemberId);
-                            command.Parameters.AddWithValue("@PlanId", ms.PlanId);
-                            command.Parameters.AddWithValue("@StartDate", ms.StartDate);
-                            command.Parameters.AddWithValue("@EndDate", ms.EndDate);
-                            command.Parameters.AddWithValue("@Status", ms.Status);
-                            command.Parameters.AddWithValue("@AmountPaid", ms.AmountPaid);
-                            command.ExecuteNonQuery();
-                        }
-
-                        // 3. Write an entry into the AuditLogs table within the same transaction
-                        string auditQuery = "INSERT INTO AuditLogs (EntityName, EntityId, Action, Details) VALUES (@EntityName, @EntityId, @Action, @Details)";
-                        using (SqlCommand auditCommand = new SqlCommand(auditQuery, connection, transaction))
-                        {
-                            auditCommand.Parameters.AddWithValue("@EntityName", "Membership");
-                            auditCommand.Parameters.AddWithValue("@EntityId", ms.MembershipId);
-                            auditCommand.Parameters.AddWithValue("@Action", exists ? "UPDATE" : "INSERT");
-                            auditCommand.Parameters.AddWithValue("@Details", $"Membership {ms.MembershipId} for Member {ms.MemberId} processed successfully by {adminUser}.");
-                            auditCommand.ExecuteNonQuery();
-                        }
-
-                        // 4. If everything succeeds, commit the transaction!
-                        transaction.Commit();
-                        Console.WriteLine("Transaction committed successfully: Membership and Audit Log saved.");
-                    }
-                    catch (Exception ex)
-                    {
-                        // 5. If any error occurs, roll back everything!
-                        transaction.Rollback();
-                        Console.WriteLine($"Transaction failed and rolled back. Error: {ex.Message}");
-                        throw;
+                        Console.WriteLine($"{m.MemberId,-10} {m.FullName,-20} {m.Age,-5} {m.PhoneNumber,-15} {m.JoinDate.ToShortDateString(),-12}");
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving members: {ex.Message}");
+            }
+
+            Console.WriteLine("\nPress any key to return to the main menu...");
+            Console.ReadKey();
+        }
+
+        private static async Task AddOrUpdateMemberAsync(MemberRepository repo)
+        {
+            Console.Clear();
+            Console.WriteLine("--- Add / Update Member ---");
+
+            Console.Write("Enter Member ID (e.g., M001): ");
+            string memberId = Console.ReadLine() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(memberId))
+            {
+                Console.WriteLine("Member ID cannot be empty.");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.Write("Enter Full Name: ");
+            string fullName = Console.ReadLine() ?? string.Empty;
+
+            Console.Write("Enter Age: ");
+            if (!int.TryParse(Console.ReadLine(), out int age))
+            {
+                Console.WriteLine("Invalid age entered.");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.Write("Enter Phone Number: ");
+            string phoneNumber = Console.ReadLine() ?? string.Empty;
+
+            Member member = new Member
+            {
+                MemberId = memberId,
+                FullName = fullName,
+                Age = age,
+                PhoneNumber = phoneNumber,
+                JoinDate = DateTime.Now
+            };
+
+            try
+            {
+                // Calling the asynchronous save method
+                await repo.SaveMemberAsync(member);
+                Console.WriteLine("\nMember saved successfully!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError saving member: {ex.Message}");
+            }
+
+            Console.WriteLine("\nPress any key to return to the main menu...");
+            Console.ReadKey();
         }
     }
 }

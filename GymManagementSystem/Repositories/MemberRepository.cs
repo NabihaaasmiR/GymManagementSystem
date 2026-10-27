@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using GymManagementSystem.Models;
 
@@ -9,20 +10,22 @@ namespace GymManagementSystem.Repositories
     {
         private const string connectionString = "Server=.\\SQLEXPRESS;Database=GymManagementDb;Integrated Security=true;TrustServerCertificate=true;";
 
-        public List<Member> GetAllMembers()
+        // Asynchronous method to get all members
+        public async Task<List<Member>> GetAllMembersAsync()
         {
             List<Member> members = new List<Member>();
 
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            await using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                connection.Open();
+                await connection.OpenAsync();
                 string query = "SELECT MemberId, FullName, Age, PhoneNumber, JoinDate FROM Members";
 
-                using (SqlCommand command = new SqlCommand(query, connection))
+                await using (SqlCommand command = new SqlCommand(query, connection))
                 {
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    // Use ExecuteReaderAsync for non-blocking reads
+                    await using (SqlDataReader reader = await command.ExecuteReaderAsync())
                     {
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
                         {
                             Member m = new Member
                             {
@@ -41,19 +44,20 @@ namespace GymManagementSystem.Repositories
             return members;
         }
 
-        public void SaveMember(Member m)
+        // Asynchronous method to save (insert or update) a member
+        public async Task SaveMemberAsync(Member m)
         {
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            await using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                connection.Open();
+                await connection.OpenAsync();
 
                 string checkQuery = "SELECT COUNT(1) FROM Members WHERE MemberId = @MemberId";
                 bool exists = false;
 
-                using (SqlCommand checkCommand = new SqlCommand(checkQuery, connection))
+                await using (SqlCommand checkCommand = new SqlCommand(checkQuery, connection))
                 {
                     checkCommand.Parameters.AddWithValue("@MemberId", m.MemberId);
-                    int count = Convert.ToInt32(checkCommand.ExecuteScalar());
+                    int count = Convert.ToInt32(await checkCommand.ExecuteScalarAsync());
                     if (count > 0) exists = true;
                 }
 
@@ -61,14 +65,15 @@ namespace GymManagementSystem.Repositories
                     ? "UPDATE Members SET FullName = @FullName, Age = @Age, PhoneNumber = @PhoneNumber, JoinDate = @JoinDate WHERE MemberId = @MemberId"
                     : "INSERT INTO Members (MemberId, FullName, Age, PhoneNumber, JoinDate) VALUES (@MemberId, @FullName, @Age, @PhoneNumber, @JoinDate)";
 
-                using (SqlCommand command = new SqlCommand(query, connection))
+                await using (SqlCommand command = new SqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@MemberId", m.MemberId);
                     command.Parameters.AddWithValue("@FullName", m.FullName);
                     command.Parameters.AddWithValue("@Age", m.Age);
                     command.Parameters.AddWithValue("@PhoneNumber", m.PhoneNumber);
                     command.Parameters.AddWithValue("@JoinDate", m.JoinDate);
-                    command.ExecuteNonQuery();
+
+                    await command.ExecuteNonQueryAsync();
                 }
             }
         }
