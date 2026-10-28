@@ -61,6 +61,7 @@ namespace GymManagementSystem
             }
         }
 
+        // --- SUBMENU: MANAGE MEMBERS ---
         private static async Task ManageMembersMenuAsync(MemberRepository repo)
         {
             bool back = false;
@@ -97,6 +98,7 @@ namespace GymManagementSystem
             }
         }
 
+        // --- SUBMENU: MANAGE PLANS (Placeholder for future module) ---
         private static async Task ManagePlansMenuAsync()
         {
             Console.Clear();
@@ -107,6 +109,7 @@ namespace GymManagementSystem
             await Task.CompletedTask;
         }
 
+        // --- SUBMENU: MANAGE MEMBERSHIPS (Placeholder for future module) ---
         private static async Task ManageMembershipsMenuAsync()
         {
             Console.Clear();
@@ -117,6 +120,7 @@ namespace GymManagementSystem
             await Task.CompletedTask;
         }
 
+        // --- MEMBER ACTIONS ---
         private static async Task DisplayAllMembersAsync(MemberRepository repo)
         {
             Console.Clear();
@@ -201,6 +205,7 @@ namespace GymManagementSystem
             Console.ReadKey();
         }
 
+        // --- AUDIT LOG VIEWER ---
         private static async Task DisplayAuditLogsAsync(AuditLogRepository repo)
         {
             Console.Clear();
